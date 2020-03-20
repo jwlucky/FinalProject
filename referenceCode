@@ -1,1 +1,127 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[17]:
+
+
+import glob
+import pandas as pd
+import xml.etree.cElementTree as et
+from xml.etree.cElementTree import iterparse
+from time import process_time 
+import os
+
+# Start the stopwatch / counter  
+t1_start = process_time() 
+
+def getvalueofnode( node ):
+    return node.text if node is not None else None
+
+def getnumberofnode( node ):
+    return int(node.text) if node is not None else 0
+
+for filename in glob.glob(r'/data/TianData/001to100/25/*.xml'):
+    with open(filename, 'r', encoding="utf-8") as content:
+        print(filename)
+        parsedXML = et.parse(content)
+        items = []
+        
+        '''
+        PMID
+        *DateCompleted: Year+Month+Day 1979-01-01
+        *JournalPubDate: Year+Month+Day 1979-01-01
+        JournalTitle
+        ISOAbbreviation: Journal Abbre
+        ArticleTitle
+        AuthorList
+        Language
+        JournalCountry
+        ArticleID
+        ReferenceList Reference ArticleID
+        '''
+        for node in parsedXML.getroot():
+            PMID = node.find('MedlineCitation/PMID')
+            DateCompleted = node.find('MedlineCitation/DateCompleted/Year')
+            JournalPubDate = node.find('MedlineCitation/Article/Journal/JournalIssue/PubDate/Year')
+            JournalTitle = node.find('MedlineCitation/Article/Journal/Title')
+            ISOAbbreviation = node.find('MedlineCitation/Article/Journal/ISOAbbreviation')
+            ArticleTitle = node.find('MedlineCitation/Article/ArticleTitle')    
+            AuthorList = node.find('MedlineCitation/Article/AuthorList')
+            Language = node.find('MedlineCitation/Article/Language')
+            JournalCountry = node.find('MedlineCitation/MedlineJournalInfo/Country')
+            # MeshHeadingList
+            ArticleID = node.find('PubmedData/ArticleIdList/ArticleId')
+            ReferenceList = node.find('PubmedData/ReferenceList')
+            # KeywordList
+            authors = []
+            references = []
+            
+            # example: [Tian J. Wang, SiCong X. Wang .......]
+            if AuthorList is not None:
+                for author in AuthorList:
+                    if author is not None:
+        #                 print(author)
+                        firstname = author.find('ForeName');
+                        lastname = author.find('LastName');
+                        initials = author.find('Initials');
+                        name = ''
+                        if firstname is not None:
+        #                     print(firstname.text)
+                            name = name + firstname.text + ' ';
+                        if initials is not None:
+        #                     print(initials.text)
+                            name = name + initials.text + '. ';
+                        if lastname is not None:
+        #                     print(lastname.text)
+                            name = name + lastname.text;
+        #             print(name)
+                    authors.append(name);
+
+            if ReferenceList is not None:
+                for reference in ReferenceList:
+                    if reference is not None:
+                       referenceID = reference.find('ArticleIdList/ArticleId');
+                    references.append(getvalueofnode(referenceID));
+            
+            # count how many references in ReferenceList row
+            countReferences = len(references)
+
+            
+       
+            item = [getvalueofnode(PMID), getvalueofnode(DateCompleted),
+                    getvalueofnode(JournalPubDate), getvalueofnode(JournalTitle), getvalueofnode(ISOAbbreviation), 
+                    getvalueofnode(ArticleTitle), authors, getvalueofnode(Language), 
+                    getvalueofnode(JournalCountry), getvalueofnode(ArticleID), references, 
+                    countReferences]
+        
+            items.append(item)
+            
+            df = pd.DataFrame(items, columns = ['PMID', 'DateCompleted', 'JournalPubDate', 
+                                                'JournalTitle', 'ISOAbbreviation', 'ArticleTitle', 'AuthorList', 
+                                                'Language', 
+                                                'JournalCountry', 'ArticleID', 'ReferenceList', 
+                                                'countReferences'])
+            
+        
+#         df_all = df.append(df, ignore_index = True)  # append 10 xml outputs to 1
+        
+#             print(df)
+
+        df.to_csv(r'/home/tian/PubMed/Step11/referenceOutput/25.csv', index = False, mode = 'a', header = False)
+
+
+
+# Stop the stopwatch / counter 
+t1_stop = process_time() 
+   
+print("Elapsed time:", t1_stop, t1_start)  
+   
+print("Elapsed time during the whole program in seconds:", t1_stop-t1_start) 
+
+print("You have finished extracting data. Congratulation!")
+
+
+
+
+
 
